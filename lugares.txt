@@ -1,0 +1,10 @@
+0 Teletica 
+1 Starbucks
+2 Hilton_Garden_Inn
+3 Hilton_San_Jose
+4 ICE
+5 KFC_Sabana_Norte
+6 Cajeros_BCR
+7 Banco_Nacional
+8 Parque_La_Sabana
+9 Estadio_Nacional 
