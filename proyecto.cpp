@@ -20,12 +20,15 @@ int streetA[50];
 int streetB[50];
 
 string building[50];
+int buildingX[50];
+int buildingY[50];
 
 //Tamaño de ventana
 GLsizei height = 800, width = 1200;
 
 //circulo
-int radius = 25;
+//int radius = 25;
+int radius=10;
 
 float PI = 3.14285714286;
 
@@ -97,6 +100,8 @@ void drawBuildingName(const string& text, const unsigned int x, const unsigned i
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     
+    glEnd();
+    glFlush();
   }
   
   void drawDist(const string& text, int x, int y){
@@ -119,10 +124,12 @@ void drawBuildingName(const string& text, const unsigned int x, const unsigned i
   	glRasterPos2i(x, y);
   	for (const char c : text)
       glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)c);
+    /*
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
+    */
     //cout << "Distancia impresa: " << text << "\n";
     
     glEnd();
@@ -132,9 +139,13 @@ void drawBuildingName(const string& text, const unsigned int x, const unsigned i
 void drawLine(int a, int b,int distancia, char color){
 	
 	//color de la linea
-	if(color == 'N' || color == 'R')
-		glColor3f(0.3, 0.3, 0.3);
+	if(color == 'N')
+		//glColor3f(0.3, 0.3, 0.3);
+		glColor3f(1.0, 1.0, 1.0);
 
+	if(color== 'R'){
+		glColor3f(1.0, 0.0, 0.0);
+	}
 		
 	glBegin(GL_LINES);
 
@@ -163,7 +174,7 @@ void drawLine(int a, int b,int distancia, char color){
 	//cout << "CoordTextY: " << yText << "\n";
 	string text = to_string(distancia);
 	//cout << "Distancia a imprimir: " << text << "\n";
-	drawDist(text,xText,yText);
+//	drawDist(text,xText,yText);
 	
 }
 
@@ -180,13 +191,15 @@ void drawCircle(float cx, float cy, float r, float num_segments, char colorChara
 	//agregar texto id al circulo
 	//si es N entonces se pone color verde 
 	if(colorCharacter == 'N'){
-		glColor3f(0.0, 1.0, 0.0);
+	//	glColor3f(0.3, 0.3, 0.3);
+		glColor3f(1.0, 1.0, 1.0);
 		text = to_string(nodeCount+1);
-		drawText(text.data(),cx - 2, cy - 8);
+	//	drawText(text.data(),cx - 2, cy - 8);
 		nodeCount++;
 	}
-
+	glColor3f(0.3, 0.3, 0.3);
 	/// Esta linea sirve para conectar todos los puntos de abajo para formar el circulo
+	/*
 	glBegin(GL_LINE_LOOP);
  
 	for(int i = 0; i < num_segments; i++){
@@ -202,6 +215,18 @@ void drawCircle(float cx, float cy, float r, float num_segments, char colorChara
 
 	
 	glFlush();
+	
+	*/
+	     
+        glBegin(GL_TRIANGLE_FAN);
+        
+        
+        glVertex2f(cx, cy); // Center
+        for(int i = 0.0f; i <= 360; i++)
+                glVertex2f(r*cos(M_PI * i / 180.0) + cx, r*sin(M_PI * i / 180.0) + cy);
+        
+        glEnd();
+        glFlush();
 
 }
 
@@ -216,15 +241,16 @@ void drawInicioFinal(float cx, float cy,int id, float r, float num_segments, cha
 	//agregar texto id al circulo
 	string text;
 	text = to_string(id);
-	drawText(text.data(),cx - 2, cy - 8);
+	//drawText(text.data(),cx - 2, cy - 8);
 	// Estas dos if es cuando se selecciona el inicio y final
 	if(colorCharacter == 'B')
-		glColor3f(0.0, 0.0, 1.0);
+		glColor3f(0.0, 1.0, 0.0);
 	if(colorCharacter == 'R')
 		glColor3f(1.0, 0.0, 0.0);
 
 
 	/// Esta linea sirve para conectar todos los puntos de abajo para formar el circulo
+	/*
 	glBegin(GL_LINE_LOOP);
  
 	for(int i = 0; i < num_segments; i++){
@@ -239,7 +265,17 @@ void drawInicioFinal(float cx, float cy,int id, float r, float num_segments, cha
 	
 	glEnd();
 	glFlush();
-
+	*/
+	
+	 glBegin(GL_TRIANGLE_FAN);
+        
+        
+        glVertex2f(cx, cy); // Center
+        for(int i = 0.0f; i <= 360; i++)
+                glVertex2f(r*cos(M_PI * i / 180.0) + cx, r*sin(M_PI * i / 180.0) + cy);
+        
+        glEnd();
+		glFlush();
 }
 
 
@@ -260,7 +296,7 @@ while(ubicacionGuion!=string::npos){
 
 void streetNameParser(string nombre,const unsigned int x, const unsigned int y){
 
-//Da formato al nombre y le agrega 25 a y
+
 size_t ubicacionGuion=nombre.find("_");
 
 while(ubicacionGuion!=string::npos){
@@ -274,6 +310,58 @@ while(ubicacionGuion!=string::npos){
 }
 
 // Recorre el documento con los vertices de cada nodo para dibujarlos
+
+
+//Para que aunque haya cambios en la ruta, los nodos y el texto siga encima 
+void redrawNodes(){
+	
+	ifstream f ("vertices.txt");
+	ifstream lugar ("lugares.txt");
+	string nombre="";
+	int idNodo;
+	
+	tempN v;
+	f >> v.id;
+	lugar >>idNodo;
+	while(!f.eof()){
+		//Para ir contando la cantidad de vértices que hay y almacenarlas en una variable global 
+	
+		 f >> v.x;
+         f >> v.y;
+        lugar >>nombre;
+        
+      
+	bool nodoInicioOFin=false;
+
+		if(sourceNodeCreated==1){
+			if(sourceNode.id==v.id){
+				nodoInicioOFin=true;
+				drawInicioFinal(sourceNode.xCoordinate, sourceNode.yCoordinate,sourceNode.id, radius, 200, 'B');
+			}
+		}
+		
+		if(destinationNodeCreated==1){
+			if(destinationNode.id==v.id){
+				nodoInicioOFin=true;
+				drawInicioFinal(destinationNode.xCoordinate, destinationNode.yCoordinate,destinationNode.id, radius, 200, 'R');
+			}
+		}
+		
+	
+        drawName(nombre,v.x,v.y);
+        
+        if(nodoInicioOFin==false){
+        	drawCircle(v.x, v.y, radius, 200, 'N');
+		}
+	
+		
+		f >> v.id;	
+		lugar >>idNodo;	
+	}
+	f.close();
+	
+}
+
 void drawNodes(){
 		
 	ifstream f ("vertices.txt");
@@ -293,7 +381,8 @@ void drawNodes(){
          f >> v.y;
         lugar >>nombre;
         building[v.id]=nombre;
-        
+        buildingX[v.id]=v.x;
+        buildingY[v.id]=v.y;
 		drawCircle(v.x, v.y, radius, 200, 'N');
 		drawName(nombre,v.x,v.y);
 		nodes[nodeCount].xCoordinate = v.x;
@@ -326,6 +415,9 @@ void drawNodesLines(){
 		streetB[r.key]=r.b;
 		int xText = abs(((nodes[r.b].xCoordinate-nodes[r.a].xCoordinate)/2)+nodes[r.a].xCoordinate);
 		int yText = abs(((nodes[r.b].yCoordinate-nodes[r.a].yCoordinate)/2)+nodes[r.a].yCoordinate)-35;
+		
+		yText=yText+35+15;
+		xText=xText-75;
 		streetNameParser(nombre, xText, yText);
 		//cout << "1: " << r.a << " 2: " << r.b << " dist: " << r.distancia << "\n";
 		drawLine(r.a,r.b,r.distancia,'N');
@@ -423,13 +515,40 @@ void display(){
 		cout<<"distancia:"<<dist[destinationNode.id]<<endl;
 }
 
-/*
 
- void drawStreetName(const string& text, int x, int y){
+
+ void printRouteInstructions(string text, int x, int y, char textType){
+ 	
   	glColor3f(1.0, 1.0, 1.0);
   	glRasterPos2i(x, y);
-  	for (const char c : text)
-      glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)c);
+  
+  	
+	size_t ubicacionGuion=text.find("_");
+	
+	while(ubicacionGuion!=string::npos){
+		
+		text.replace(ubicacionGuion,1," ");
+		
+		ubicacionGuion=text.find("_");
+	}
+
+  	for (const char c : text){
+  	
+	  	if(textType=='I'){
+	  		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)c);	
+		}
+		
+		if(textType=='T'){
+			glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, (int)c);	
+		}
+		
+		if(textType=='D'){
+			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+		}
+	
+	  }
+  	
+     
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -439,14 +558,67 @@ void display(){
     glEnd();
 	glFlush();
   }
-*/
+
+
+string getDirection(int puntoA, int puntoB){
+	
+	int puntoAX=buildingX[puntoA];
+	int puntoAY=buildingY[puntoA];
+	int puntoBX=buildingX[puntoB];
+	int puntoBY=buildingY[puntoB];
+	
+	cout<<"puntoAX:"<<puntoAX<<endl;
+	cout<<"puntoAY:"<<puntoAY<<endl;
+	cout<<"puntoBX:"<<puntoBX<<endl;
+	cout<<"puntoBY:"<<puntoBY<<endl;
+	cout<<" "<<endl;
+	string direccion="";
+	
+	if((puntoBX>puntoAX) && (puntoBY==puntoAY)){
+		direccion="este";
+	}
+	
+	if((puntoBX<puntoAX) && (puntoBY==puntoAY)){
+		direccion="oeste";
+	}
+	
+	if((puntoBX==puntoAX) && (puntoBY>puntoAY)){
+		direccion="norte";
+	}
+	
+	if((puntoBX==puntoAX) && (puntoBY<puntoAY)){
+		direccion="sur";
+	}
+	
+	if((puntoBX>puntoAX) && (puntoBY<puntoAY)){
+		direccion="sureste";
+	}
+	
+	if((puntoBX<puntoAX) && (puntoBY<puntoAY)){
+		direccion="suroeste";
+	}
+	
+	if((puntoBX>puntoAX) && (puntoBY>puntoAY)){
+		direccion="noreste";
+	}
+	
+	if((puntoBX<puntoAX) && (puntoBY>puntoAY)){
+		direccion="noroeste";
+	}
+	
+	return direccion;
+}
+
+
 void drawInstructions(){
 		cout<<"Ruta para llegar a "<<destinationNode.id<<":"<<endl;
 		string titulo="Ruta para llegar a "+ building[destinationNode.id];
 
-		streetNameParser(titulo,400, 300);
+		printRouteInstructions(titulo,400,300,'T');
+
 		string distancia="Distancia: "+ to_string(dist[destinationNode.id])+"00m";
-		streetNameParser(distancia,400, 275);
+
+		printRouteInstructions(distancia,400,275,'D');
 		
 		cout<<destinationNode.id;
 		int parnode= parent[destinationNode.id];
@@ -470,6 +642,7 @@ void drawInstructions(){
 		string instruccion;
 		int ubicacionYInstruccion=250;
 		string distanciaInstruccion;
+		string direccion="";
 		for(int j=i-1;j>=0;j--){
 			puntoBRuta=ruta[j];
 			cout<<ruta[j]<<" ";
@@ -478,23 +651,111 @@ void drawInstructions(){
 				if((streetA[k]==puntoARuta && streetB[k]==puntoBRuta) || (streetB[k]==puntoARuta && streetA[k]==puntoBRuta)){
 					distanciaNodos=(dist[puntoBRuta]-dist[puntoARuta])*100;
 					distanciaInstruccion=to_string(distanciaNodos);
-					instruccion="Camine " +distanciaInstruccion+"m "+" hasta "+ building[puntoBRuta]+" sobre " + streetName[k];
-						streetNameParser(instruccion,400, ubicacionYInstruccion);
+					
+					//direccion=getDirection(puntoARuta,puntoBRuta);
+					drawLine(puntoARuta,puntoBRuta,distanciaNodos/100,'R');
+					instruccion="Camine " +distanciaInstruccion+"m al "+direccion+" hasta "+ building[puntoBRuta]+" sobre " + streetName[k];
+					
+						printRouteInstructions(instruccion,400,ubicacionYInstruccion,'I');
 						ubicacionYInstruccion=ubicacionYInstruccion-25;
 				}
 			}
-			string streetName[50];
-			string streetA[50];
-			string streetB[50];
-			
+		
 			puntoARuta=ruta[j];
 			
 		}
 		
-		
+		redrawNodes();
 		cout<<"distancia:"<<dist[destinationNode.id]<<endl;
 		
 }
+
+
+void adjustMatrix(){
+//Hace ajustes a la matriz de adjacencia generada para asegurar el buen funcionamiento de dijkstra 
+	for(int i=0;i<20;i++){
+		for(int j=0;j<20;j++){
+			if(adjMatrix[i][j]==0 && i!=j){
+				adjMatrix[i][j]=999;
+			}
+		}
+			
+	}
+
+}
+
+void resetToDefault(){
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+	V=0;
+
+	for(int j=0;j<100;j++){
+		dist[j]=0;
+		visited[j]=0;
+		parent[j]=0;
+	}
+	
+	//streetName[50]={""};
+	for(int i=0;i<50;i++){
+		streetName[i]="";
+		building[i]="";
+		streetA[i]=0;
+		streetB[i]=0;
+		buildingX[i]=0;
+		buildingY[i]=0;
+	}
+	
+
+	
+
+	for(int i=0;i<20;i++){
+		for(int j=0;j<20;j++){
+		adjMatrix[i][j]=0;
+		}
+	}
+	
+	
+	for(int i=0;i<20;i++){
+		nodes[i].id=0;
+		nodes[i].xCoordinate=0;
+		nodes[i].yCoordinate=0;
+	}
+	
+	lineNodes[0].id=0;
+	lineNodes[0].xCoordinate=0;
+	lineNodes[0].yCoordinate=0;
+	
+	lineNodes[1].id=0;
+	lineNodes[1].xCoordinate=0;
+	lineNodes[1].yCoordinate=0;
+	
+	sourceNode.id=0;
+	sourceNode.xCoordinate=0;
+	sourceNode.yCoordinate=0;
+	
+	destinationNode.id=0;
+	destinationNode.xCoordinate=0;
+	destinationNode.yCoordinate=0;
+
+	
+	lineNodesCount = 0;
+	
+	sourceNodeCreated = 0;
+	
+	destinationNodeCreated = 0;
+
+
+  	drawNodes();
+	drawNodesLines();
+	drawNodesLines();
+	redrawNodes();
+	redrawNodes();
+	adjustMatrix();
+	
+}
+
 
 //Revisa si se esta seleccionando un nodo
 int noRepeat(int x, int y) 
@@ -514,6 +775,8 @@ int noRepeat(int x, int y)
 	//Ningun nodo fue seleccionado
 	return 1;
 }
+
+
 
 
 
@@ -563,6 +826,7 @@ void clickMouse(int btn, int state, int x, int y)
 						init();
    						dijkstra();
    						drawInstructions();
+   					
 					} 
 				}
 
@@ -598,18 +862,8 @@ void myInit()
 }
 
 
-void adjustMatrix(){
-//Hace ajustes a la matriz de adjacencia generada para asegurar el buen funcionamiento de dijkstra 
-	for(int i=0;i<20;i++){
-		for(int j=0;j<20;j++){
-			if(adjMatrix[i][j]==0 && i!=j){
-				adjMatrix[i][j]=999;
-			}
-		}
-			
-	}
 
-}
+
 
 int main(int argc, char** argv)
 {
@@ -619,10 +873,16 @@ int main(int argc, char** argv)
     glutCreateWindow("Proyecto 1");
     myInit();
     glutMouseFunc(clickMouse);
+	resetToDefault();
+
+/*
     drawNodes();
 	drawNodesLines();
+	redrawNodes();
+	redrawNodes();
 	adjustMatrix();
 //	verAdjMatrix();
+*/
     glutMainLoop();
 
     return 0;
