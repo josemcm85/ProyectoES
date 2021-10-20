@@ -1,9 +1,9 @@
 0 C.68
 1 C.68
-2 A._de_las_Americas
-3 A._de_las_Americas
-4 A._de_las_Americas
-5 A._de_las_Americas
+2 Av._de_las_Americas
+3 Av._de_las_Americas
+4 Av._de_las_Americas
+5 Av._de_las_Americas
 6 Ruta_1
 7 Paseo_Colon
 8 C._de_la_Sabana

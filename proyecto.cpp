@@ -5,6 +5,8 @@
 #include<string>
 #include <fstream>
 #include <cstdlib>
+#include <iomanip>
+#include <unistd.h>
 using namespace std;
 
 //Almacena la cantidad de vértices
@@ -15,14 +17,10 @@ bool visited[100]={0};
 int parent[100];
 #define INF 999
 
-string streetName[50];
-int streetA[50];
-int streetB[50];
+string selectedMap="escazu";
 
-string building[50];
-int buildingX[50];
-int buildingY[50];
-
+bool darkMode=true;
+bool rotated=false;
 //Tamaño de ventana
 GLsizei height = 800, width = 1200;
 
@@ -49,12 +47,52 @@ int sourceNodeCreated = 0;
 int destinationNodeCreated = 0;
 
 
+//coordenadas del botón reset(mata redonda)
+int resetX1=50;
+int resetY1=175;
+int resetX2=200;
+int resetY2=250;
+
+
+//coordenadas del botón para seleccionar Escazu
+int escazuX1=50;
+int escazuY1=275;
+int escazuX2=200;
+int escazuY2=350;
+
+//coordenadas del botón toggleDarkMode
+int darkToggleX1=1050;
+int darkToggleY1=175;
+int darkToggleRadius=50;
+
+//coordenadas del botón rotate
+int rotateX1=1050;
+int rotateY1=300;
+int rotateRadius=50;
+
 struct node
 {	
 	int id;
 	int xCoordinate;
 	int yCoordinate;
 }nodes[20], lineNodes[2], sourceNode, destinationNode;
+
+
+//Estructura para almacenar nombres de edificios y sus ubicaciones
+struct buildingStruct
+{
+	string name;
+	int x;
+	int y;
+}building[50];
+
+//Estructura para almacenar el nombre de calles y de que nodo a qué nodo van
+struct streetStruct
+{
+	string name;
+	int A;
+	int B;
+}street[50];
 
 //Estructura de ayuda para recorrer doc con vertices
 typedef struct tempNode
@@ -73,25 +111,20 @@ typedef struct record {
 } rec;
 
 
-  void drawText(const string& text, const unsigned int x, const unsigned int y)
-  {
 
-    glColor3f(1.0, 1.0, 0.0);
-    glRasterPos2i(x, y);
-    for (const char c : text)
-      glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, (int)c);
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    
-  }
-  
-  
+  //Método para mostrar el texto con el nombre de edificios
 void drawBuildingName(const string& text, const unsigned int x, const unsigned int y)
   {
 
-    glColor3f(1.0, 1.0, 0.0);
+    //glColor3f(1.0, 1.0, 0.0);
+    
+    if(darkMode){
+    	glColor3f(0.776f,0.564f,0.427f);
+	}else{
+		glColor3f(0.408f,0.419f,0.498f);
+	}
+ 
+
     glRasterPos2i(x, y);
     for (const char c : text)
       glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
@@ -104,56 +137,92 @@ void drawBuildingName(const string& text, const unsigned int x, const unsigned i
     glFlush();
   }
   
-  void drawDist(const string& text, int x, int y){
-  	glColor3f(1.0, 1.0, 1.0);
-  	glRasterPos2i(x, y);
-  	for (const char c : text)
-      glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, (int)c);
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    //cout << "Distancia impresa: " << text << "\n";
-    
-    glEnd();
-	glFlush();
-  }
-
+    //Método para mostrar el texto con el nombre de calles
  void drawStreetName(const string& text, int x, int y){
-  	glColor3f(1.0, 1.0, 1.0);
+ 	if(darkMode){
+ 		glColor3f(1.0, 1.0, 1.0);
+	 }else{
+	 	glColor3f(0.3f,0.3f,0.3f);
+	 }
+
   	glRasterPos2i(x, y);
   	for (const char c : text)
       glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)c);
-    /*
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    */
-    //cout << "Distancia impresa: " << text << "\n";
     
     glEnd();
 	glFlush();
   }
 
+
+
+ void drawInfoBackground(){
+ 	
+ 	int infoX1=0;
+ 	int infoX2=1200;
+ 	int infoY1=400;
+ 	int infoY2=0;
+ 	
+ 	if(darkMode){
+ 		glColor3f(0.211f, 0.29f, 0.349f);
+	 }else{
+	 	//glColor3f(0.811f, 0.89f, 0.949f);
+	 	glColor3f(0.149f,0.274f,0.325f);
+	 }
+
+		 
+	
+	glBegin(GL_QUADS);
+		
+	glVertex2f(infoX1, infoY1);
+	glVertex2f(infoX2, infoY1);
+	glVertex2f(infoX2, infoY2);
+	glVertex2f(infoX1, infoY2);
+	glEnd();
+
+    glFlush();
+ }
+  
+ void drawDivider(int x1,int y1, int x2, int y2){
+ 	if(darkMode){
+ 		glColor3f(0.235f,0.251f,0.262f);
+	 }else{
+	 	glColor3f(0.635f,0.651f,0.662f);
+	 }
+ 
+ 	glBegin(GL_LINES);
+
+	glVertex2f(x1,y1);
+	glVertex2f(x2,y2);
+	
+	glEnd();
+	glFlush();
+ }
+  
+    //Método que dibuja las líneas que representan las calles
+  //también va armando la matriz de adyacencia del grafo
+ 
 void drawLine(int a, int b,int distancia, char color){
 	
 	//color de la linea
 	if(color == 'N')
 		//glColor3f(0.3, 0.3, 0.3);
-		glColor3f(1.0, 1.0, 1.0);
-
+		//glColor3f(1.0, 1.0, 1.0);
+		//glColor3f(0.24f,0.255f,0.259f);
+		if(darkMode){
+			glColor3f(0.137f,0.415f,0.243f);	
+		}else{
+			glColor3f(0.9f,0.9f,0.9f);
+		}
+		
 	if(color== 'R'){
-		glColor3f(1.0, 0.0, 0.0);
+		//glColor3f(1.0, 0.0, 0.0);
+		glColor3f(0.4,0.615,0.964);
 	}
 		
 	glBegin(GL_LINES);
 
 	glVertex2f(nodes[a].xCoordinate, nodes[a].yCoordinate);
 	glVertex2f(nodes[b].xCoordinate, nodes[b].yCoordinate);
-	
-	//cout << "xA: " << nodes[a].xCoordinate << " yA: " << nodes[a].yCoordinate << "\n";
-	//cout << "xB: " << nodes[b].xCoordinate << " yB: " << nodes[b].yCoordinate << "\n";
 	
 	glEnd();
 	glFlush();	
@@ -170,15 +239,262 @@ void drawLine(int a, int b,int distancia, char color){
 	//Cordenadas para imprimir el texto
 	int xText = abs(((nodes[b].xCoordinate-nodes[a].xCoordinate)/2)+nodes[a].xCoordinate);
 	int yText = abs(((nodes[b].yCoordinate-nodes[a].yCoordinate)/2)+nodes[a].yCoordinate);
-	//cout << "CoordTextX: " << xText << "\n";
-	//cout << "CoordTextY: " << yText << "\n";
+
 	string text = to_string(distancia);
-	//cout << "Distancia a imprimir: " << text << "\n";
-//	drawDist(text,xText,yText);
-	
+
 }
 
 
+
+void drawRotateButton(){
+
+if(darkMode){
+		glColor3f(0.188f, 0.192f, 0.208f);
+	}else{
+		glColor3f(0.906f, 0.435f, 0.317f);
+	}
+        glBegin(GL_TRIANGLE_FAN);
+        
+        glVertex2f(rotateX1, rotateY1); // Center
+        for(int i = 0.0f; i <= 360; i++)
+                glVertex2f(rotateRadius*cos(M_PI * i / 180.0) + rotateX1, rotateRadius*sin(M_PI * i / 180.0) + rotateY1);
+        
+        glEnd();
+        glFlush();
+
+int textX=rotateX1-25;
+int textY=rotateY1-10;
+    
+    string text1="Rotar";
+
+    if(darkMode){
+    	glColor3f(0.498f, 0.655f, 0.788f);
+    
+	}else{
+		glColor3f(0.965f, 0.973f, 0.976f);
+	
+	}
+	
+  
+  	glRasterPos2i(textX,textY);
+
+  	for (const char c : text1)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+    glEnd();
+	glFlush();
+}
+
+void drawToggleDarkButton(){
+	
+    if(darkMode){
+		glColor3f(0.188f, 0.192f, 0.208f);
+	}else{
+		glColor3f(0.906f, 0.435f, 0.317f);
+	}
+        glBegin(GL_TRIANGLE_FAN);
+        
+        glVertex2f(darkToggleX1, darkToggleY1); // Center
+        for(int i = 0.0f; i <= 360; i++)
+                glVertex2f(darkToggleRadius*cos(M_PI * i / 180.0) + darkToggleX1, darkToggleRadius*sin(M_PI * i / 180.0) + darkToggleY1);
+        
+        glEnd();
+        glFlush();
+
+int textX=darkToggleX1-25;
+int textY=darkToggleY1+5;
+    
+    string text1="Modo";
+    string text2="";
+    if(darkMode){
+    	glColor3f(0.498f, 0.655f, 0.788f);
+    	text2="Claro";
+	}else{
+		glColor3f(0.965f, 0.973f, 0.976f);
+		text2="Oscuro";
+	}
+	
+  
+  	glRasterPos2i(textX,textY);
+
+  	for (const char c : text1)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+ 	textY=textY-25;
+ 
+ 	glRasterPos2i(textX,textY);
+
+  	for (const char c : text2)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+    glEnd();
+	glFlush();
+	
+	
+
+}
+
+
+void drawEscazuButton(){
+	
+	if(darkMode){
+		glColor3f(0.188f, 0.192f, 0.208f);
+	}else{
+		glColor3f(0.906f, 0.435f, 0.317f);
+	}
+
+	
+	
+	glBegin(GL_QUADS);
+		
+	glVertex2f(escazuX1, escazuY1);
+	glVertex2f(escazuX2, escazuY1);
+	glVertex2f(escazuX2, escazuY2);
+	glVertex2f(escazuX1, escazuY2);
+	glEnd();
+
+    glFlush();
+
+
+int textX=escazuX1+50;
+int textY=escazuY1+25;
+    
+    if(darkMode){
+    	glColor3f(0.498f, 0.655f, 0.788f);
+	}else{
+		glColor3f(0.965f, 0.973f, 0.976f);
+	}
+  
+  	glRasterPos2i(textX,textY);
+  	string text="Escazu";
+  	for (const char c : text)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+    glEnd();
+	glFlush();
+
+}
+
+//Método que dibuja el botón de reset(y su texto)
+
+void drawMataRedondaButton(){
+	
+	if(darkMode){
+		glColor3f(0.188f, 0.192f, 0.208f);
+	}else{
+		glColor3f(0.906f, 0.435f, 0.317f);
+	}
+
+	
+	
+	glBegin(GL_QUADS);
+		
+	glVertex2f(resetX1, resetY1);
+	glVertex2f(resetX2, resetY1);
+	glVertex2f(resetX2, resetY2);
+	glVertex2f(resetX1, resetY2);
+	glEnd();
+
+    glFlush();
+
+
+int textX=resetX1+15;
+int textY=resetY1+25;
+    
+    if(darkMode){
+    	glColor3f(0.498f, 0.655f, 0.788f);
+	}else{
+		glColor3f(0.965f, 0.973f, 0.976f);
+	}
+  
+  	glRasterPos2i(textX,textY);
+  	string text="Mata Redonda";
+  	for (const char c : text)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+    glEnd();
+	glFlush();
+
+}
+
+void drawSearchIcon(){
+	
+	float cx=25;
+	float cy=375;
+	float r=15;
+	
+	float x1=cx+5+5;
+	float y1=cy-5-5;
+	float x2=cx+40+5;
+	float y2=cy-25-5;
+		
+	glColor3f(0.96f,0.522f,0.486f);
+		glBegin(GL_LINE_LOOP);
+ 
+ 	int num_segments=200;
+ 	float x=0;
+ 	float y=0;
+ 	float rad=0;
+	for(int i = 0; i < num_segments; i++){
+		
+		rad = 2.0f * M_PI * i / num_segments;
+ 		x = r * cosf(rad);
+		y = r * sinf(rad);
+ 		
+ 		//dibujo el punto
+		glVertex2f(x + cx, y + cy);
+	}
+	
+	glEnd();
+	glFlush();
+	     /*
+        glBegin(GL_TRIANGLE_FAN);
+        
+        
+        glVertex2f(cx, cy); // Center
+        for(int i = 0.0f; i <= 360; i++)
+                glVertex2f(r*cos(M_PI * i / 180.0) + cx, r*sin(M_PI * i / 180.0) + cy);
+        
+        glEnd();
+        glFlush();
+        */
+  	glColor3f(0.96f,0.522f,0.486f);
+	
+ 
+ 	glBegin(GL_LINES);
+
+	glVertex2f(x1,y1);
+	glVertex2f(x2,y2);
+	
+	glEnd();
+	glFlush();
+	
+	
+	int textX=cx+50;
+	int textY=cy-10;
+    
+
+  	glColor3f(1.0f, 1.0f, 1.0f);
+  	glRasterPos2i(textX,textY);
+  	
+  	string text="";
+  	if(selectedMap=="escazu"){
+  		text="Escazu";
+	  }
+	  
+	if(selectedMap=="mataRedonda"){
+		text="Mata Redonda";
+	}
+
+  	for (const char c : text)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, (int)c);
+ 
+    glEnd();
+	glFlush();
+
+}
+
+//Método que dibuja los circulos que representan cada edificio
 void drawCircle(float cx, float cy, float r, float num_segments, char colorCharacter)
 {
 	
@@ -194,29 +510,16 @@ void drawCircle(float cx, float cy, float r, float num_segments, char colorChara
 	//	glColor3f(0.3, 0.3, 0.3);
 		glColor3f(1.0, 1.0, 1.0);
 		text = to_string(nodeCount+1);
-	//	drawText(text.data(),cx - 2, cy - 8);
+
 		nodeCount++;
 	}
-	glColor3f(0.3, 0.3, 0.3);
-	/// Esta linea sirve para conectar todos los puntos de abajo para formar el circulo
-	/*
-	glBegin(GL_LINE_LOOP);
- 
-	for(int i = 0; i < num_segments; i++){
-		
-		rad = 2.0f * PI * i / num_segments;
- 		x = r * cosf(rad);
-		y = r * sinf(rad);
- 		
- 		//dibujo el punto
-		glVertex2f(x + cx, y + cy);
+//	
+	if(darkMode){
+		glColor3f(0.96f,0.522f,0.486f);
+	}else{
+		glColor3f(0.3, 0.3, 0.3);
 	}
-	glEnd();
 
-	
-	glFlush();
-	
-	*/
 	     
         glBegin(GL_TRIANGLE_FAN);
         
@@ -230,6 +533,8 @@ void drawCircle(float cx, float cy, float r, float num_segments, char colorChara
 
 }
 
+//Método que redibuja los circulos que representan cada edificio
+//Basado en si son el punto A o B de la ruta
 void drawInicioFinal(float cx, float cy,int id, float r, float num_segments, char colorCharacter)
 {
 	
@@ -241,32 +546,15 @@ void drawInicioFinal(float cx, float cy,int id, float r, float num_segments, cha
 	//agregar texto id al circulo
 	string text;
 	text = to_string(id);
-	//drawText(text.data(),cx - 2, cy - 8);
+
 	// Estas dos if es cuando se selecciona el inicio y final
 	if(colorCharacter == 'B')
-		glColor3f(0.0, 1.0, 0.0);
+	//	glColor3f(0.0, 1.0, 0.0);
+		glColor3f(0.949f,0.674f,0.07f);
 	if(colorCharacter == 'R')
-		glColor3f(1.0, 0.0, 0.0);
+	//	glColor3f(1.0, 0.0, 0.0);
+		glColor3f(0.635f,0.102f,0.078f);
 
-
-	/// Esta linea sirve para conectar todos los puntos de abajo para formar el circulo
-	/*
-	glBegin(GL_LINE_LOOP);
- 
-	for(int i = 0; i < num_segments; i++){
-		
-		rad = 2.0f * PI * i / num_segments;
- 		x = r * cosf(rad);
-		y = r * sinf(rad);
- 		
- 		//dibujo el punto
-		glVertex2f(x + cx, y + cy);
-	}
-	
-	glEnd();
-	glFlush();
-	*/
-	
 	 glBegin(GL_TRIANGLE_FAN);
         
         
@@ -279,9 +567,11 @@ void drawInicioFinal(float cx, float cy,int id, float r, float num_segments, cha
 }
 
 
+
+//Método que da formato al nombre del edificio(quitando los "_" y reemplazándolos por espacios)
 void drawName(string nombre,const unsigned int x, const unsigned int y){
 
-//Da formato al nombre y le agrega 25 a y
+//Da formato al nombre 
 size_t ubicacionGuion=nombre.find("_");
 
 while(ubicacionGuion!=string::npos){
@@ -291,9 +581,11 @@ while(ubicacionGuion!=string::npos){
 	ubicacionGuion=nombre.find("_");
 }
 
-	drawBuildingName(nombre,x - 50, y + 45);
+	drawBuildingName(nombre,x - 50, y + 25);
 }
 
+
+//Método que da formato al nombre de la calle(quitando los "_" y reemplazándolos por espacios)
 void streetNameParser(string nombre,const unsigned int x, const unsigned int y){
 
 
@@ -310,13 +602,23 @@ while(ubicacionGuion!=string::npos){
 }
 
 // Recorre el documento con los vertices de cada nodo para dibujarlos
-
-
-//Para que aunque haya cambios en la ruta, los nodos y el texto siga encima 
+//Para que aunque haya cambios en la ruta, los nodos y el texto sigan encima 
 void redrawNodes(){
 	
-	ifstream f ("vertices.txt");
-	ifstream lugar ("lugares.txt");
+		string verticeFile="";
+	string lugarFile="";
+	if(selectedMap=="mataRedonda"){
+		verticeFile="verticesMataRedonda.txt";
+		lugarFile="lugaresMataRedonda.txt";	
+	}	
+	
+	if(selectedMap=="escazu"){
+		verticeFile="verticesEscazu.txt";
+		lugarFile="lugaresEscazu.txt";	
+	}
+	
+	ifstream f (verticeFile);
+	ifstream lugar (lugarFile);
 	string nombre="";
 	int idNodo;
 	
@@ -329,7 +631,10 @@ void redrawNodes(){
 		 f >> v.x;
          f >> v.y;
         lugar >>nombre;
-        
+           if(rotated){
+        	v.x=1200-v.x;
+        	v.y=(800-v.y)+375;
+		}
       
 	bool nodoInicioOFin=false;
 
@@ -362,10 +667,27 @@ void redrawNodes(){
 	
 }
 
+
+//Método que recorre los documentos vertices.txt y lugares.txt para 
+//llamar a los métodos drawCircle y drawName los cuales dibujan en pantalla 
+//una representación visual del edificio y el nombre del mismo 
+//Además, almacena los datos de cada edificio en un objeto de tipo buildingStruct
 void drawNodes(){
-		
-	ifstream f ("vertices.txt");
-	ifstream lugar ("lugares.txt");
+
+	string verticeFile="";
+	string lugarFile="";
+	if(selectedMap=="mataRedonda"){
+		verticeFile="verticesMataRedonda.txt";
+		lugarFile="lugaresMataRedonda.txt";	
+	}	
+	
+	if(selectedMap=="escazu"){
+		verticeFile="verticesEscazu.txt";
+		lugarFile="lugaresEscazu.txt";	
+	}
+	
+	ifstream f (verticeFile);
+	ifstream lugar (lugarFile);
 	
 	string nombre="";
 	int idNodo;
@@ -374,30 +696,58 @@ void drawNodes(){
 	f >> v.id;
 	lugar >>idNodo;
 	while(!f.eof()){
+	
 		//Para ir contando la cantidad de vértices que hay y almacenarlas en una variable global 
 		V++;
 		 
 		 f >> v.x;
          f >> v.y;
         lugar >>nombre;
-        building[v.id]=nombre;
-        buildingX[v.id]=v.x;
-        buildingY[v.id]=v.y;
+        building[v.id].name=nombre;
+        
+        if(rotated){
+        	v.x=1200-v.x;
+        	v.y=(800-v.y)+375;
+		}
+        
+        building[v.id].x=v.x;
+        building[v.id].y=v.y;
+     
 		drawCircle(v.x, v.y, radius, 200, 'N');
+		
 		drawName(nombre,v.x,v.y);
+
 		nodes[nodeCount].xCoordinate = v.x;
 		nodes[nodeCount].yCoordinate = v.y;
 		nodes[nodeCount].id = nodeCount;
+
 		f >> v.id;	
 		lugar >>idNodo;	
 	}
 	f.close();
+	
 }
 
-//Recorre el documento con las distancias entre cada nodo para dibujarlas
+//Método que recorre los documentos distancia.txt y calles.txt para 
+//llamar a los métodos drawLine y streetNameParser los cuales dibujan en pantalla 
+//la calle  y el nombre de la misma 
+//Además, almacena los datos de cada calle en un objeto de tipo streetStruct
 void drawNodesLines(){
-	ifstream f ("distancia.txt");
-	ifstream calle("calles.txt");
+	string distanciaFile="";
+	string calleFile="";
+	if(selectedMap=="mataRedonda"){
+		distanciaFile="distanciaMataRedonda.txt";
+		calleFile="callesMataRedonda.txt";	
+	}	
+	
+	if(selectedMap=="escazu"){
+		distanciaFile="distanciaEscazu.txt";
+		calleFile="callesEscazu.txt";	
+	}
+	
+	
+	ifstream f (distanciaFile);
+	ifstream calle(calleFile);
 	string nombre="";
 	int idNodo;
 	
@@ -410,16 +760,16 @@ void drawNodesLines(){
 		f >> r.b;
 		f >> r.distancia;
 		calle>>nombre;
-		streetName[r.key]=nombre;
-		streetA[r.key]=r.a;
-		streetB[r.key]=r.b;
+		street[r.key].name=nombre;
+		street[r.key].A=r.a;
+		street[r.key].B=r.b;
 		int xText = abs(((nodes[r.b].xCoordinate-nodes[r.a].xCoordinate)/2)+nodes[r.a].xCoordinate);
 		int yText = abs(((nodes[r.b].yCoordinate-nodes[r.a].yCoordinate)/2)+nodes[r.a].yCoordinate)-35;
 		
-		yText=yText+35+15;
-		xText=xText-75;
+		yText=yText+40;
+		xText=xText-65;
 		streetNameParser(nombre, xText, yText);
-		//cout << "1: " << r.a << " 2: " << r.b << " dist: " << r.distancia << "\n";
+	
 		drawLine(r.a,r.b,r.distancia,'N');
 			
 		f >> r.key;
@@ -430,12 +780,14 @@ void drawNodesLines(){
 }
 
 
+//Método para inicializar dijkstra
 void init(){
 	for(int i=0;i<V;i++){
 		parent[i]=i;
 		dist[i]=INF;
 	}	
 	dist[sourceNode.id]=0;	
+
 }
 
 int getNearest(){
@@ -449,9 +801,11 @@ int getNearest(){
 		//nodo sea menor a INF sin haber sido visitados es si 
 		//son vecinos del nodo anteriormente analizado y agregado 
 		//al árbol
+		
 		if(!visited[i] && dist[i]<minvalue){
-		//	cout<<"dist Node "<<i<<" ="<<dist[i]<<endl;
+	
 			//Lo que hace esto es revisar cual de los nodos no visitados tiene el menor costo
+			
 			minvalue=dist[i];
 			minnode=i;
 		}
@@ -466,14 +820,15 @@ void dijkstra(){
 		
 		int nearest =getNearest();
 		visited[nearest]=true;
-		
+			
 		for(int adj=0; adj<V;adj++){
 			//Si el costo no es INF, significa que ese es un nodo adyacente
 			//Y revisa que el costo de dist[adj] sea mayor a  dist[nearest]+cost[nearest][adj]
 			//porque si esa condición no se cumple, significa que ese vecino tiene otra ruta por donde se 
 			//llega desde el origen a un menor costo 
+			
 			if(adjMatrix[nearest][adj] !=INF && dist[adj]> dist[nearest]+adjMatrix[nearest][adj]){
-				
+			
 				//Así vamos acumulando los costos(lo cual podemos usar para en la siguiente ronda saber cual
 				//vecino es el más cercano
 				//Entonces lo que hacemos es revisar los vecinos del nodo actual y calcularles 
@@ -487,39 +842,29 @@ void dijkstra(){
 				//una referencia al nodo actual(para que asi actúe como 
 				//la raíz de este vecino)
 				parent[adj]=nearest;
+					
 				
 			}
 		}
 	}
-}
 
-void display(){
-	cout<<"Ruta para llegar a "<<destinationNode.id<<":"<<endl;
-		cout<<destinationNode.id;
-		int parnode= parent[destinationNode.id];
-		int ruta[20];
-		ruta[0]=destinationNode.id;
-		int i=1;
-		while(parnode!=sourceNode.id){
-			ruta[i]=parnode;
-			cout<<"<-" << parnode <<" ";
-			parnode=parent[parnode];
-			i++;
-		}
-		cout<<endl;
-		
-		for(int j=i-1;j>=0;j--){
-			cout<<ruta[j]<<" ";
-		}
-		
-		cout<<"distancia:"<<dist[destinationNode.id]<<endl;
 }
 
 
-
+//Imprime el texto de las instrucciones de viaje y le da formato a este(elimina los underscore en caso de que existan)
+//según el tipo utiliza un font distinto
+//I:Para las instrucciones 
+//T:Para el titulo
+//D:Para la línea que muestra la distancia
  void printRouteInstructions(string text, int x, int y, char textType){
  	
-  	glColor3f(1.0, 1.0, 1.0);
+ 	if(darkMode){
+ 		glColor3f(1.0, 1.0, 1.0);
+	 }else{
+	 	//glColor3f(0.3, 0.3, 0.3);
+	 	glColor3f(0.965f, 0.973f, 0.976f);
+	 }
+
   	glRasterPos2i(x, y);
   
   	
@@ -553,25 +898,20 @@ void display(){
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
-    //cout << "Distancia impresa: " << text << "\n";
-    
+ 
     glEnd();
 	glFlush();
   }
 
 
+//Compara las coordenadas de 2 edificios y retorna la ubicación del edificio B(puntoB) respecto al edificio A 
 string getDirection(int puntoA, int puntoB){
 	
-	int puntoAX=buildingX[puntoA];
-	int puntoAY=buildingY[puntoA];
-	int puntoBX=buildingX[puntoB];
-	int puntoBY=buildingY[puntoB];
+	int puntoAX=building[puntoA].x;
+	int puntoAY=building[puntoA].y;
+	int puntoBX=building[puntoB].x;
+	int puntoBY=building[puntoB].y;
 	
-	cout<<"puntoAX:"<<puntoAX<<endl;
-	cout<<"puntoAY:"<<puntoAY<<endl;
-	cout<<"puntoBX:"<<puntoBX<<endl;
-	cout<<"puntoBY:"<<puntoBY<<endl;
-	cout<<" "<<endl;
 	string direccion="";
 	
 	if((puntoBX>puntoAX) && (puntoBY==puntoAY)){
@@ -611,14 +951,27 @@ string getDirection(int puntoA, int puntoB){
 
 
 void drawInstructions(){
-		cout<<"Ruta para llegar a "<<destinationNode.id<<":"<<endl;
-		string titulo="Ruta para llegar a "+ building[destinationNode.id];
+	
+		string titulo="Ruta para llegar a "+ building[destinationNode.id].name;
 
-		printRouteInstructions(titulo,400,300,'T');
+		printRouteInstructions(titulo,275,365,'T');
 
 		string distancia="Distancia: "+ to_string(dist[destinationNode.id])+"00m";
+		
+		printRouteInstructions(distancia,275,340,'D');
+		
+		
+		string duracionStr="";
+		//Asumiendo una velocidad de 65m/min 		
+		double duracion=dist[destinationNode.id]/0.65;
+		stringstream ss;
+		ss <<fixed << setprecision(2) << duracion;
+		duracionStr = ss.str();
 
-		printRouteInstructions(distancia,400,275,'D');
+	
+		
+		string duracionEstimada="Duracion estimada: "+duracionStr+"min"; 
+		printRouteInstructions(duracionEstimada,275,315,'D');
 		
 		cout<<destinationNode.id;
 		int parnode= parent[destinationNode.id];
@@ -630,7 +983,6 @@ void drawInstructions(){
 		
 		while(parnode!=sourceNode.id){
 			ruta[i]=parnode;
-			cout<<"<-" << parnode <<" ";
 			parnode=parent[parnode];
 			i++;
 		}
@@ -640,24 +992,25 @@ void drawInstructions(){
 		int puntoBRuta;
 		int distanciaNodos;
 		string instruccion;
-		int ubicacionYInstruccion=250;
+		int ubicacionYInstruccion=290;
 		string distanciaInstruccion;
 		string direccion="";
 		for(int j=i-1;j>=0;j--){
 			puntoBRuta=ruta[j];
-			cout<<ruta[j]<<" ";
+		
 			
 			for(int k=0;k<50;k++){
-				if((streetA[k]==puntoARuta && streetB[k]==puntoBRuta) || (streetB[k]==puntoARuta && streetA[k]==puntoBRuta)){
+				if((street[k].A==puntoARuta && street[k].B==puntoBRuta) || (street[k].B==puntoARuta && street[k].A==puntoBRuta)){
 					distanciaNodos=(dist[puntoBRuta]-dist[puntoARuta])*100;
 					distanciaInstruccion=to_string(distanciaNodos);
 					
-					//direccion=getDirection(puntoARuta,puntoBRuta);
+					direccion=getDirection(puntoARuta,puntoBRuta);
 					drawLine(puntoARuta,puntoBRuta,distanciaNodos/100,'R');
-					instruccion="Camine " +distanciaInstruccion+"m al "+direccion+" hasta "+ building[puntoBRuta]+" sobre " + streetName[k];
+					instruccion="Camine " +distanciaInstruccion+"m al "+direccion+" hasta "+ building[puntoBRuta].name+" sobre " + street[k].name;
 					
-						printRouteInstructions(instruccion,400,ubicacionYInstruccion,'I');
+						printRouteInstructions(instruccion,275,ubicacionYInstruccion,'I');
 						ubicacionYInstruccion=ubicacionYInstruccion-25;
+						usleep(100000);
 				}
 			}
 		
@@ -672,7 +1025,7 @@ void drawInstructions(){
 
 
 void adjustMatrix(){
-//Hace ajustes a la matriz de adjacencia generada para asegurar el buen funcionamiento de dijkstra 
+//Hace ajustes a la matriz de adyacencia generada para asegurar el buen funcionamiento de dijkstra 
 	for(int i=0;i<20;i++){
 		for(int j=0;j<20;j++){
 			if(adjMatrix[i][j]==0 && i!=j){
@@ -684,31 +1037,60 @@ void adjustMatrix(){
 
 }
 
+
+//Imprime la matriz de adyacencia(SOLO PARA USOS DE DEBUG)
+void verAdjMatrix(){
+	for(int i=0;i<20;i++){
+		for(int j=0;j<20;j++){
+			cout << adjMatrix[i][j] << " ";
+		}
+			cout << endl;
+	}
+}
+
+
+//Devuelve las variables globales a sus valores originales 
+//Es ejecutado al presionar el botón reset 
 void resetToDefault(){
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+	
+	if(darkMode){
+		glClearColor(0.098f,0.145f,0.208f,1.0f);
+	}else{
+		glClearColor(0.965f, 0.973f, 0.976f, 1.0f );
+	
+	}
+	//
+	//glClearColor(0.098f,0.102f,0.11f,1.0f);
+
+//
 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
+drawInfoBackground();
+drawSearchIcon();
+drawMataRedondaButton();
+drawToggleDarkButton();
+drawEscazuButton();
+drawRotateButton();
+drawDivider(0,400,1200,400);
+drawDivider(250,400,250,0);
 	V=0;
 
 	for(int j=0;j<100;j++){
 		dist[j]=0;
-		visited[j]=0;
+		visited[j]=false;
 		parent[j]=0;
 	}
 	
-	//streetName[50]={""};
 	for(int i=0;i<50;i++){
-		streetName[i]="";
-		building[i]="";
-		streetA[i]=0;
-		streetB[i]=0;
-		buildingX[i]=0;
-		buildingY[i]=0;
+		street[i].name="";
+		building[i].name="";
+		street[i].A=0;
+		street[i].B=0;
+		building[i].x=0;
+		building[i].y=0;
 	}
 	
 
-	
+	nodeCount=-1;
 
 	for(int i=0;i<20;i++){
 		for(int j=0;j<20;j++){
@@ -747,16 +1129,43 @@ glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	destinationNodeCreated = 0;
 
 
+
   	drawNodes();
+  	
 	drawNodesLines();
-	drawNodesLines();
+
 	redrawNodes();
-	redrawNodes();
+
 	adjustMatrix();
 	
+	//verAdjMatrix();
 }
 
 
+void toggleDarkMode(){
+	darkMode=!darkMode;
+	resetToDefault();
+}
+
+void toggleRotate(){
+	rotated=!rotated;
+	resetToDefault();
+}
+
+void checkIfDarkTogglePressed(int x,int y){
+	
+	if(x<=(darkToggleX1+darkToggleRadius) && x>=(darkToggleX1-darkToggleRadius) && y<=(darkToggleY1+darkToggleRadius) && y>=(darkToggleY1-darkToggleRadius)){
+			toggleDarkMode();
+		}	
+
+}
+
+void checkIfRotatePressed(int x,int y){
+	
+	if(x<=(rotateX1+rotateRadius) && x>=(rotateX1-rotateRadius) && y<=(rotateY1+rotateRadius) && y>=(rotateY1-rotateRadius)){
+			toggleRotate();
+		}
+}
 //Revisa si se esta seleccionando un nodo
 int noRepeat(int x, int y) 
 {	
@@ -778,8 +1187,23 @@ int noRepeat(int x, int y)
 
 
 
+//revisa si el click realizado fue en una coordenada que se encuentra dentro del área del botón reset 
+void checkIfResetPressed(int x,int y)
+{
+	if(x>resetX1 && x<resetX2 && y>resetY1 && y<resetY2){
+		selectedMap="mataRedonda";
+		resetToDefault();
+	}
 
+}
 
+void checkIfEscazuPressed(int x,int y){
+	
+	if(x>escazuX1 && x<escazuX2 && y>escazuY1 && y<escazuY2){
+		selectedMap="escazu";
+		resetToDefault();
+	}
+}
 
 //Seleccionar Inicio y Destino con el Mouse
 void clickMouse(int btn, int state, int x, int y)
@@ -789,19 +1213,26 @@ void clickMouse(int btn, int state, int x, int y)
 	y = height-y;
 	
 	
+	if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN){
+			checkIfResetPressed(x,y);
+			checkIfDarkTogglePressed(x,y);
+			checkIfRotatePressed(x,y);
+			checkIfEscazuPressed(x,y);
+	}
+	
 	
 	//Seleccion de Inicio y Destino
 	if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN && (!sourceNodeCreated || !destinationNodeCreated))
 	{
-		
+	
 		//Si hay nodos creados
 		if(nodeCount)
 		{
-				cout<<"click1"<<endl;
+				
 			//Si un nodo es seleccionado se va a asignar a lineNodes[0]
 			if(!noRepeat(x, y))
 			{
-						cout<<"click2"<<endl;
+					
 				//Cuando no se ha seleccionado el nodo Inicio
 				if(!sourceNodeCreated)
 				{
@@ -835,21 +1266,13 @@ void clickMouse(int btn, int state, int x, int y)
 	}
 }
 
-void verAdjMatrix(){
-	for(int i=0;i<20;i++){
-		for(int j=0;j<20;j++){
-			cout << adjMatrix[i][j] << " ";
-		}
-			cout << endl;
-	}
-}
+
 
 
 
 
 void myInit()
 {
-
 	glViewport(0,0,width,height);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -861,28 +1284,16 @@ void myInit()
 	 
 }
 
-
-
-
-
 int main(int argc, char** argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(width, height);
-    glutCreateWindow("Proyecto 1");
+    glutCreateWindow("Tico Maps");
     myInit();
     glutMouseFunc(clickMouse);
 	resetToDefault();
 
-/*
-    drawNodes();
-	drawNodesLines();
-	redrawNodes();
-	redrawNodes();
-	adjustMatrix();
-//	verAdjMatrix();
-*/
     glutMainLoop();
 
     return 0;
