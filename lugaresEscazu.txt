@@ -1,0 +1,10 @@
+0 Pizza_Hut 
+1 BCR
+2 McDonald's
+3 Embajada_Corea_del_Sur
+4 EY_Costa_Rica
+5 Fresh_Market
+6 Embajada_Honduras
+7 INS
+8 Escazu_Village
+9 Walmart
