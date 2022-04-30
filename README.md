@@ -1,2 +1,1 @@
-# Estructura de Datos II Proyecto 1
-
+# Estructura de Datos II Proyecto
